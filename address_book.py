@@ -1,5 +1,5 @@
 from collections import UserDict
-from datetime import datetime
+from datetime import datetime, timedelta
 from exceptions import RecordNotFoundError, BirthdayValidationError
 from records import Record
 from fields import Name, Phone, Birthday
@@ -11,6 +11,7 @@ class AddressBook(UserDict):
     
     def find(self, name):
         record = self.data.get(name)
+    
         if record is None:
             raise RecordNotFoundError(f"Contact '{name}' not found.")
         return record
@@ -34,13 +35,12 @@ class AddressBook(UserDict):
     
     def get_upcoming_birthdays(self):
         upcoming_birthdays = []
+        today = datetime.today().date()
+        one_week_from_today = today + timedelta(days=7)
         for record in self.data.values():
             if record.birthday:
-                
-                today = datetime.today()
-                birthday = record.birthday.get_date()
-                
-                days_left = (birthday - today).days
-                if 0 <= days_left <= 7:
+                birthday = record.birthday._value.date()
+                upcoming_birthday_this_year = birthday.replace(year=today.year)
+                if today <= upcoming_birthday_this_year <= one_week_from_today:
                     upcoming_birthdays.append(record.name.value)
         return upcoming_birthdays

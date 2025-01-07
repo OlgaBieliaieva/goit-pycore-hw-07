@@ -1,6 +1,7 @@
 from decorators import input_error
 from records import Record
-from exceptions import RecordAlreadyExistsError
+from fields import Phone, Birthday
+from exceptions import RecordAlreadyExistsError, PhoneValidationError, RecordNotFoundError, BirthdayValidationError
 
 @input_error
 def parse_input(user_input):
@@ -13,33 +14,61 @@ def parse_input(user_input):
 
 @input_error
 def add_contact(args, book):
-    name, phone, *_ = args    
+    name, *details = args   
+    
+    try:
+        book.find(name)
+        raise RecordAlreadyExistsError(f"Contact '{name}' already exists.")
+    except RecordNotFoundError:
+        pass
+
     record = Record(name)
-    record.add_phone(phone)
-    message = "Contact added."    
+    
+    for index, detail in enumerate(details, start=2):
+        try:
+            phone_obj = Phone(detail)
+            record.add_phone(phone_obj.value)
+            continue
+        except PhoneValidationError:
+            pass
+
+        try:
+            birthday_obj = Birthday(detail)
+            record.add_birthday(birthday_obj.value)
+        except BirthdayValidationError:
+            return (f"Argument {index}: '{detail}' is not a valid phone number or date of birth.")
+
+    book.add_record(record)
+    message = "Contact added."
     return message
     
 @input_error
 def change_phone(args, book):
-    name, old_phone, new_phone = args
-    record = book.find(name)
-    if record is None:
+    try:
+        name, old_phone, new_phone = args
+        record = book.find(name)
+        record.edit_phone(old_phone, new_phone)
+        return f"Phone number for {name} updated."
+    except RecordNotFoundError:
         return "Contact not found."
-    record.change_phone(old_phone, new_phone)
-    return f"Phone number for {name} updated."
+    except PhoneValidationError:
+        return f"Invalid phone number format: '{new_phone}'."
+    except Exception as e:
+        return str(e)
 
 @input_error
-def show_phone(args, book):
+def show_phone(args, book):    
     name, *_ = args
-    record = book.find(name)
-    if record is None:
+    try: 
+        record = book.find(name)
+        phone_numbers = [str(phone) for phone in record.phones]
+        return f"Phone numbers for {name}: " + ", ".join(phone_numbers)
+    except RecordNotFoundError:
         return "Contact not found."
-    return f"Phone numbers for {name}: " + ", ".join(record.phones)
 
 @input_error
-def show_all_contacts(args, book):
-    for name, record in book.data.items():   
-        return record
+def show_all_contacts(book):    
+    return "\n".join(str(record) for record in book.data.values())
 
 @input_error
 def add_birthday(args, book):
@@ -48,17 +77,19 @@ def add_birthday(args, book):
     if record is None:
         return "Contact not found."
     record.add_birthday(birthday)
+    book.add_birthday(name, birthday)
     return f"Birthday for {name} added successfully."
 
 @input_error
 def show_birthday(args, book):
     name, *_ = args
-    record = book.find(name)
-    if record is None:
+    try:
+        record = book.find(name)
+        if record.birthday and str(record.birthday) != "No birthday set.":
+            return f"{name}'s birthday is on {record.birthday}."
+        return f"No birthday set for {name}."
+    except RecordNotFoundError:
         return "Contact not found."
-    if record.birthday:
-        return f"{name}'s birthday is on {record.birthday.value.strftime('%d.%m.%Y')}."
-    return f"No birthday set for {name}."
 
 @input_error
 def birthdays(args, book):

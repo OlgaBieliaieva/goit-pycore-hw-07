@@ -1,25 +1,5 @@
-from datetime import datetime
-from fields import Name, Phone
+from fields import Name, Phone, Birthday
 from exceptions import PhoneValidationError, RecordNotFoundError, BirthdayValidationError
-
-class Birthday:
-    def __init__(self, value):
-        self._value = None  
-        self.value = value  
-
-    
-    def __set__(self, instance, value):
-        try:
-            
-            self._value = datetime.strptime(value, "%d.%m.%Y")
-        except ValueError:
-            raise BirthdayValidationError("Invalid date format. Use DD.MM.YYYY")
-    
-    def __get__(self, instance, owner):
-        return self._value.strftime("%d.%m.%Y") if self._value else "No birthday set."
-
-    def __str__(self):
-        return self.__get__(None, None)
 
 class Record:
     def __init__(self, name):
@@ -58,8 +38,8 @@ class Record:
     def add_birthday(self, birthday_str):
         try:
             self.birthday = Birthday(birthday_str)
-        except ValueError:
-            raise BirthdayValidationError()
+        except BirthdayValidationError as e:
+            raise e
 
     def get_birthday(self):
         if self.birthday:
